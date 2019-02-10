@@ -3,6 +3,6 @@ Go to [maximvdberg.github.io/cmproject](maximvdberg.github.io/cmproject) for inf
 
 This is the toplevel directory of the project. See *docs/* for the site files.
 
-[Site markdown file](/data/README.md)
+[Site markdown file](docs/README.md)
 
 [License](LICENSE)
