@@ -1,4 +1,7 @@
 ### Spotify's genres of the future
+* Maxim van den Berg*
+
+
 Spotify has several curious genres within its database, including some which are charactized by the word *future*, namely the following 5:
 - futurepop
 - future funk

@@ -6,3 +6,5 @@ This is the toplevel directory of the project. See *docs/* for the site files.
 [Site markdown file](docs/README.md)
 
 [License](LICENSE)
+
+By Maxim van den Berg
