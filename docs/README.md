@@ -23,7 +23,7 @@ It can also be helpfull to compare some of the outliers of the genre, but care m
 
 To explore the structure of the data, we begin by comparing some common features from the Spotify API.
 <br>
-<img src="./danceability.png" width="400px">
-<img src="./valence.png" width="400px">
-<img src="./energy.png" width="400px"><br>
+<img src="./danceability.png" width="600px"><br>
+<img src="./valence.png" width="600px"><br>
+<img src="./energy.png" width="600px"><br>
 
