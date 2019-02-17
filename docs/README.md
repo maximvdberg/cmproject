@@ -1,6 +1,7 @@
-### Spotify's genres of the future
+## Spotify's genres of the future
 *Maxim van den Berg*
 
+### Introduction
 
 Spotify has several curious genres within its database, including some which are charactized by the word *future*, namely the following 5:
 - futurepop
@@ -15,3 +16,13 @@ It is definitely not clear if these genres are connected by something more than 
 
 The corpus will naturallly be a selection of songs from artist from each of these genres. Large names such as the aformentioned Snail's House will be of particular interest and mutliple songs will be included, but some genres such as future ambient consist of mostly smaller artist, where a smaller and more varied selection of songs from different artist is more appropiate.
 It can also be helpfull to compare some of the outliers of the genre, but care must be taken to ensure those artist would actually belong to the genre, instead of their appearance being based solely on Spotify's automatic assignment. If not, it will be more usefull to exclude them from the research, as they would negatively interfere with making valid comparisons between the genres.
+
+
+### Some Visualisation
+![](../plots/scatter.png)
+<img src="../plots/scatter.png" width="200px">
+To explore the structure of the data, we begin by comparing some common features from the Spotify API.
+![](../plots/danceability.png)
+![](../plots/valence.png)
+![](../plots/energy.png)
+
