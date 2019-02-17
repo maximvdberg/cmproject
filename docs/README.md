@@ -19,10 +19,11 @@ It can also be helpfull to compare some of the outliers of the genre, but care m
 
 
 ### Some Visualisation
-<img src="https://github.com/maximvdberg/cmproject/blob/master/plots/scatter.png" width="400px">
+<img src="scatter.png" width="400px"><br>
 
 To explore the structure of the data, we begin by comparing some common features from the Spotify API.
-<img src="https://github.com/maximvdberg/cmproject/blob/master/plots/danceability.png" width="200px">
-<img src="https://github.com/maximvdberg/cmproject/blob/master/plots/valence.png" width="200px">
-<img src="https://github.com/maximvdberg/cmproject/blob/master/plots/energy.png" width="200px">
+<br>
+<img src="danceability.png" width="200px">
+<img src="valence.png" width="200px">
+<img src="energy.png" width="200px"><br>
 
