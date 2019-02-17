@@ -19,7 +19,7 @@ It can also be helpfull to compare some of the outliers of the genre, but care m
 
 
 ### Some Visualisation
-For the following graphs, I used playlist largely based on playlists provided by the Every Noise at Once website (http://everynoise.com/).
+For the following graphs, I used playlist largely based on playlists provided by the Every Noise at Once website (http://everynoise.com/), each 50 tracks long.
 
 <img src="./scatter.png" width="800px"><br>
 
