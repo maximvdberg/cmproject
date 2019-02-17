@@ -19,9 +19,13 @@ It can also be helpfull to compare some of the outliers of the genre, but care m
 
 
 ### Some Visualisation
+For the following graphs, I used playlist largely based on playlists provided by the Every Noise at Once website (http://everynoise.com/).
+
 <img src="./scatter.png" width="800px"><br>
 
-To explore the structure of the data, we begin by comparing some common features from the Spotify API.
+To explore the structure of the data, we begin by comparing some common features from the Spotify API. To me, valence seemed to be a logical choice for comparison, as I felt like the genres sounded most distict in this regard. The graph shows the average valence of the songs from each genre, as well as the value of each individual song in the form of a scatter plot. Additionally, the colour displays the energy value of the tracks, another feature I felt would provide contrast between the genres. Lastly, the size of each point gives an indication of the liveness of the track, as provided by Spotify.
+
+The following graphs show the distribution of the values of three features (namely danceability, valence and energy) among the different genres. From this we can deduce in what value range the focus of the different genres lie, such as concentrated high energy of Futurepop, or the generally higher valence of Future Funk, Pop and Kawaii Bass.
 <br>
 <img src="./danceability.png" width="600px"><br>
 <img src="./valence.png" width="600px"><br>
