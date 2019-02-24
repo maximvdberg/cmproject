@@ -1,0 +1,90 @@
+---
+title: "Spotify's Genres of the Future"
+author: "Maxim van den Berg"
+date: "24 February 2019"
+output:
+    flexdashboard::flex_dashboard:
+        storyboard: true
+        theme: lumen
+---
+
+
+```{r echo = FALSE, messages = FALSE}
+library(tidyverse)
+library(spotifyr)
+library(plotly)
+source("functions.r")
+```
+
+### An Introduction
+
+```{r echo = FALSE}
+# Get playlist data
+future_funk <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","4a0xb2zui3hIPll7CMgeSu"))
+kawaii_future_bass <- remove_junk( get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","75OfhBfc4tnQ8MFdiPiMcx"))
+futurepop <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","1TBQdi8VdYsvruWv1W5HjB"))
+future_ambient <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","2dZ7eWcGRtuyseKY5QNZoP"))
+future_garage <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","2IgZ50kclGP2tNVx7mu9vL"))
+
+all_genres <- rbind(future_funk,kawaii_future_bass,futurepop,future_ambient,future_garage)
+```
+
+Spotify has several curious genres within its database, including some which are characterized by the word *future*. Namely, the following selection:
+
+* Futurepop
+* Future Funk
+* Kawaii Future Bass
+* Future Ambient
+* Future Garage
+
+It is definitely not clear if these genres are connected by something more than just their name. We'll explore why these genres are called the way the are, and if a (strong) connection might actually tie these genres together. This will consist of exploring the aspects of the music within each genre first, after which we will properly compare the 5 genres by defining a suitable corpus and
+
+```{r}
+# TODO: ADD SOME SOUND EXAMPLES IF POSSIBLE
+```
+
+
+
+### A Future of Sounds, Rhythms and Timbres
+
+## A Short Examination of the Genres
+# Future Funk and Kawaii Bass
+From exploring the genres and listening to some excerpts of their music, we can quickly suspect that the *future* description might mean something entirely different per genre. In the case of Future Funk and Kawaii Future Bass, it seems to refer to a futuristic pop-y sound, with a distinct electronic feel, although real (sampled) instruments and some vocals (often with light-hearted lyrics) now and then are common too, especially in Future Funk. Future Kawaii Bass sets itself apart from Future Funk with extensive use of *chiptune* sounds and strong upbeat rhythms.
+
+# Futurepop and Future Garage
+dark synths and straight rhythms, vocals, desperate lyrics
+```{r}
+# TODO: jeez i can barely listen to this, it is giving me instant depression
+```
+
+# Futurepop and Future Garage
+
+## The Corpus
+
+The collections of songs we'll analyze, our corpus, will naturally be a selection of songs from artist from each of these genres. Large names such as Snail's House (which has in fact been attributed to the pioneer of Kawaii Future Bass) will be of particular interest and multiple songs will be included, but some genres such as future ambient consist of mostly smaller artist, where a smaller and more varied selection of songs from different artist is more appropriate.
+It could also be helpful to compare some of the outliers of the genre, but care must be taken to ensure those artist would actually belong to the genre, instead of their appearance being based solely on Spotify's automatic assignment. If not, it will be more useful to exclude them from the research, as they would negatively interfere with making valid comparisons between the genres.
+
+```{r}
+# TODO: table with corpus (might redefine the corpus if I have time)
+```
+
+
+```{r echo = FALSE}
+# It might be insightful to also look at their non-future counterparts (if those exist), and see how each future genre differs from them to discover if any pattern may exist.
+```
+
+
+
+### First Investigations
+
+```{r echo = FALSE}
+# Make some plots
+scatter <- ggplot(all_genres,aes(x=Genre,size=Liveness,color=Energy)) + geom_jitter(aes(y=Valence)) + geom_bar(aes(x=Genre,y=Valence),alpha=0.3,stat="summary")
+danceability <- ggplot(all_genres,aes(color=Genre)) + geom_freqpoly(binwidth=0.15,aes(x=Danceability),size=1)
+valence <- ggplot(all_genres,aes(color=Genre)) + geom_freqpoly(binwidth=0.15,aes(x=Valence),size=1)
+energy <- ggplot(all_genres,aes(color=Genre)) + geom_freqpoly(binwidth=0.15,aes(x=Energy),size=1)
+```
+
+```{r echo = FALSE}
+ggplotly(scatter)
+```
