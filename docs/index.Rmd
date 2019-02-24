@@ -31,17 +31,21 @@ all_genres <- rbind(future_funk,kawaii_future_bass,futurepop,future_ambient,futu
 
 Spotify has several curious genres within its database, including some which are characterized by the word *future*. Namely, the following selection:
 
-* Futurepop
-* Future Funk
-* Kawaii Future Bass
-* Future Ambient
-* Future Garage
+- Futurepop
+- Future Funk
+- Kawaii Future Bass
+- Future Ambient
+- Future Garage
 
 It is definitely not clear if these genres are connected by something more than just their name. We'll explore why these genres are called the way the are, and if a (strong) connection might actually tie these genres together. This will consist of exploring the aspects of the music within each genre first, after which we will properly compare the 5 genres by defining a suitable corpus and
 
 ```{r}
 # TODO: ADD SOME SOUND EXAMPLES IF POSSIBLE
 ```
+
+***
+
+Something here too?
 
 
 
@@ -57,7 +61,8 @@ dark synths and rhythms, vocals, desperate lyrics, very minor
 # TODO: jeez i can barely listen to this, it is giving me instant depression
 ```
 
-# Futurepop and Future Garage
+# Future Ambient
+minimalistic, especially drum grooves. little instruments, long songs, little synths but a lot of samples, occasional real "smooth" instruments
 
 ## The Corpus
 
@@ -88,3 +93,8 @@ energy <- ggplot(all_genres,aes(color=Genre)) + geom_freqpoly(binwidth=0.15,aes(
 ```{r echo = FALSE}
 ggplotly(scatter)
 ```
+
+***
+
+An important finding in our prelimenary finding is
+Here is a graph to show that
