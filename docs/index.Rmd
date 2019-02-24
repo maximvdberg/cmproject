@@ -5,7 +5,7 @@ date: "24 February 2019"
 output:
     flexdashboard::flex_dashboard:
         storyboard: true
-        theme: yeti
+        theme: united
 ---
 
 
@@ -46,7 +46,17 @@ It is definitely not clear if these genres are connected by something more than 
 
 ***
 
-Something here too?
+
+Futurepop
+<img src="../assets/futurepop1.jpeg" width="800px"><br>
+Future Funk
+<img src="../assets/futurefunk1.jpeg" width="800px"><br>
+Kawaii Future Bass
+<img src="../assets/kawaiifuturebass1.jpg" width="800px"><br>
+Future Ambient
+<img src="../assets/futureambient1.jpg" width="800px"><br>
+Future Garage
+<img src="../assets/futuregarage1.jpg" width="800px"><br>
 
 
 
