@@ -5,7 +5,7 @@ date: "24 February 2019"
 output:
     flexdashboard::flex_dashboard:
         storyboard: true
-        theme: lumen
+        theme: cerulean
 ---
 
 
@@ -78,10 +78,7 @@ It could also be helpful to compare some of the outliers of the genre, but care 
 # TODO: table with corpus (might redefine the corpus if I have time)
 kable(all_genres %>% group_by(Genre) %>% summarize('Song Count'=n()),
       caption = "The song count for the five genres (will probable be updated later)")
-```
 
-
-```{r echo = FALSE}
 # It might be insightful to also look at their non-future counterparts (if those exist), and see how each future genre differs from them to discover if any pattern may exist.
 ```
 
