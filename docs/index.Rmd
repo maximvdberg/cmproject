@@ -6,6 +6,7 @@ output:
     flexdashboard::flex_dashboard:
         storyboard: true
         theme: united
+runtime: shiny
 ---
 
 
@@ -14,6 +15,7 @@ library(tidyverse)
 library(spotifyr)
 library(plotly)
 library(knitr)
+library(gridExtra)
 source("functions.r")
 ```
 
@@ -136,56 +138,114 @@ Surprisingly, we can see Futurepop actually has a somewhat high average, even hi
 
 ### Chromagrams
 
-```{r}
-milk <- get_tidy_audio_analysis('4mCwspCTPF1aoWUNxsS5aD') %>% select(segments) %>% unnest(segments) %>% select(start, duration, pitches)
-sunset <- get_tidy_audio_analysis('0DvqAXyoA7zRB8wgH0DjRO') %>% select(segments) %>% unnest(segments) %>% select(start, duration, pitches)
-forever <- get_tidy_audio_analysis('47Gqy79zgQgvqIvjpkAcXE') %>% select(segments) %>% unnest(segments) %>% select(start, duration, pitches)
 
-milk %>%
-    mutate(pitches = map(pitches, compmus_normalise, 'chebyshev')) %>%
-    compmus_gather_chroma %>%
-    ggplot(
-        aes(
-            x = start + duration / 2,
-            width = duration,
-            y = pitch_class,
-            fill = value)) +
-    geom_tile() +
-    labs(x = 'Time (s)', y = NULL, fill = 'Magnitude') +
-    theme_minimal()
-sunset %>%
-    mutate(pitches = map(pitches, compmus_normalise, 'chebyshev')) %>%
-    compmus_gather_chroma %>%
-    ggplot(
-        aes(
-            x = start + duration / 2,
-            width = duration,
-            y = pitch_class,
-            fill = value)) +
-    geom_tile() +
-    labs(x = 'Time (s)', y = NULL, fill = 'Magnitude') +
-    theme_minimal()
-forever  %>%
-    mutate(pitches = map(pitches, compmus_normalise, 'chebyshev')) %>%
-    compmus_gather_chroma %>%
-    ggplot(
-        aes(
-            x = start + duration / 2,
-            width = duration,
-            y = pitch_class,
-            fill = value)) +
-    geom_tile() +
-    labs(x = 'Time (s)', y = NULL, fill = 'Magnitude') +
-    theme_minimal()
+
+
+```{r}
+
+get_analysis <- function(id) {
+    # return(get_tidy_audio_analysis(id) %>%
+    #        select(segments) %>%
+    #        unnest(segments) %>%
+    #        select(start, duration, pitches))
+    return(get_tidy_audio_analysis(id) %>%
+    compmus_align(bars, segments) %>%
+    select(bars) %>% unnest(bars) %>%
+    mutate(
+        pitches =
+            map(segments,
+                compmus_summarise, pitches,
+                method = 'rms', norm = 'euclidean')) %>%
+    mutate(
+        timbre =
+            map(segments,
+                compmus_summarise, timbre,
+                method = 'mean')))
+}
+
+plot_chroma <- function(data) {
+    return(data %>%
+        mutate(pitches = map(pitches, compmus_normalise, 'chebyshev')) %>%
+        compmus_gather_chroma %>%
+        ggplot(
+            aes(
+                x = start + duration / 2,
+                width = duration,
+                y = pitch_class,
+                fill = value)) +
+        geom_tile() +
+        labs(x = 'Time (s)', y = NULL, fill = 'Magnitude') +
+        theme_minimal())
+}
+
+plot_cesptro <- function(data) {
+    return(data %>%
+        compmus_gather_timbre %>%
+        ggplot(
+            aes(
+                x = start + duration / 2,
+                width = duration,
+                y = basis,
+                fill = value)) +
+        geom_tile() +
+        labs(x = 'Time (s)', y = NULL, fill = 'Magnitude') +
+        scale_fill_viridis_c(option = 'E') +
+        theme_classic())
+}
+
+kfb_milk <- get_analysis('4mCwspCTPF1aoWUNxsS5aD')
+ff_sunset <- get_analysis('0DvqAXyoA7zRB8wgH0DjRO')
+fp_forever <- get_analysis('47Gqy79zgQgvqIvjpkAcXE')
+fg_king <- get_analysis('6f1S3mOpU4TeoTZOJCmRXl')
+fa_freefloat <- get_analysis('5DJhoqNPXKVHmRNk9VXiZd')
+
+
+pl1 <- plot_chroma(kfb_milk)     + ggtitle("Forever (Original Club Mix) - Bruderschaft (Futurepop)")
+pl2 <- plot_chroma(ff_sunset)    + ggtitle("Ji-Eun's Sunset - City Girl (Future Funk)")
+pl3 <- plot_chroma(fp_forever)   + ggtitle("Hot Milk - Snail's House (Kawaii Future Bass)")
+pl4 <- plot_chroma(fg_king)      + ggtitle("King Bromeliad - Floating Points (Future Garage)")
+pl5 <- plot_chroma(fa_freefloat) + ggtitle("Freefloat - Aural Float (Future Ambient)")
+
+pl6 <- plot_cesptro(kfb_milk)      # + ggtitle("Forever (Original Club Mix) - Bruderschaft (Futurepop)")
+pl7 <- plot_cesptro(ff_sunset)     # + ggtitle("Ji-Eun's Sunset - City Girl (Future Funk)")
+pl8 <- plot_cesptro(fp_forever)    # + ggtitle("Hot Milk - Snail's House (Kawaii Future Bass)")
+pl9 <- plot_cesptro(fg_king)       # + ggtitle("King Bromeliad - Floating Points (Future Garage)")
+pl10 <- plot_cesptro(fa_freefloat) # + ggtitle("Freefloat - Aural Float (Future Ambient)")
+#grid.arrange(grobs = list(pl1,pl2,pl3,pl4,pl5,pl6,pl7,pl8,pl9,pl10),ncols=5)
+#renderPlot
+
+pl1
+pl6
+
+pl2
+pl7
+
+pl3
+pl8
+
+pl4
+pl9
+
+pl5
+pl10
+
 ```
 
 ***
 
 #### Description
-Here we can see a chromagram of a single somewhat representative song for every genre.
-In order, they are:
+Here we can see a chromagram and a cepstrogram of a single somewhat representative song for every genre.
+The songs are picked by hand, which ensures a totally subjective view of every genre, but I think it can be a
+useful tool for analysis nonetheless.
+In order, these songs are:
 
- - Forever (Original Club Mix) - Bruderschaft
- - Ji-Eun's Sunset - City Girl
- - Hot Milk - Snail's House
- - (others are W.I.P.)
+ - Forever (Original Club Mix) - Bruderschaft (Futurepop)
+ - Ji-Eun's Sunset - City Girl (Future Funk)
+ - Hot Milk - Snail's House (Kawaii Future Bass)
+ - King Bromeliad - Floating Points (Future Garage)
+ - Freefloat - Aural Float (Future Ambient)
+
+```{r}
+# selectInput("n_breaks", label = "Song to choose",
+#             choices = c("Forever","Ji-Eun's Sunset","Hot Milk","King Bromeliad","Freefloat"), selected = "Hot Milk")
+```
