@@ -1,0 +1,305 @@
+---
+title: "Spotify's Genres of the Future"
+author: "Maxim van den Berg"
+date: "24 February 2019"
+output:
+    flexdashboard::flex_dashboard:
+        storyboard: true
+        theme: united
+---
+
+
+```{r echo = FALSE, messages = FALSE}
+library(tidyverse)
+library(spotifyr)
+library(plotly)
+library(knitr)
+library(compmus)
+library(shiny)
+source("functions.r")
+```
+
+### An Introduction to Spotify's Genres of the Future {data-commentary-width=400}
+
+```{r echo = FALSE}
+# Get playlist data
+
+all_genres <- rbind(future_funk,kawaii_future_bass,futurepop,future_ambient,future_garage)
+```
+
+Spotify has several curious genres within its database, including some which are characterized by the word *future*. Namely, the following selection:
+
+- Future Funk
+- Kawaii Future Bass
+- Futurepop
+- Future Ambient
+- Future Garage
+
+It is definitely not clear if these genres are connected by something more than just their name. We'll explore why these genres are called the way the are, and if a (strong) connection might actually tie these genres together. This will consist of exploring the aspects of the music within each genre first, after which we will properly compare the 5 genres by defining a suitable corpus and providing insightful visualizations of the audio analysis data provided by the [Spotify API](https://www.rcharlie.com/spotifyr/), using some features provided by the [compmus R package](https://jaburgoyne.github.io/compmus/).
+
+<center>
+<br><br>
+<img src="assets/futurefunk1.jpeg" height="200px">
+<img src="assets/kawaiifuturebass1.jpg" height="200px">
+<img src="assets/futurepop1.jpeg" height="200px">
+<img src="assets/futureambient1.jpg" height="200px" margin=20px">
+<img src="assets/futuregarage1.jpg" height="200px">
+</center>
+
+***
+
+<center>
+<br>
+Some sound samples from the different genres (in fact, these playlist together are the entire corpus).
+<br><br>
+<iframe src="https://open.spotify.com/embed/user/bkd0b33gypt1ixtyg44x4y2ui/playlist/4a0xb2zui3hIPll7CMgeSu" width="300" height="80" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
+<iframe src="https://open.spotify.com/embed/user/bkd0b33gypt1ixtyg44x4y2ui/playlist/75OfhBfc4tnQ8MFdiPiMcx" width="300" height="80" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
+<iframe src="https://open.spotify.com/embed/user/bkd0b33gypt1ixtyg44x4y2ui/playlist/2dZ7eWcGRtuyseKY5QNZoP" width="300" height="80" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
+<iframe src="https://open.spotify.com/embed/user/bkd0b33gypt1ixtyg44x4y2ui/playlist/2IgZ50kclGP2tNVx7mu9vL" width="300" height="80" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
+<iframe src="https://open.spotify.com/embed/user/bkd0b33gypt1ixtyg44x4y2ui/playlist/1TBQdi8VdYsvruWv1W5HjB" width="300" height="80" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
+
+
+</center>
+
+
+### A Future of Sounds, Rhythms and Timbres {data-commentary-width=400}
+
+#### A Short Examination of the Genres
+##### Future Funk and Kawaii Bass
+From exploring the genres and listening to some excerpts of their music, we can quickly suspect that the *future* description might mean something entirely different per genre. In the case of Future Funk and Kawaii Future Bass, it seems to refer to a futuristic pop-y sound, with a distinct electronic feel, although real (sampled) instruments and some vocals (often with light-hearted lyrics) now and then are common too, especially in Future Funk. Future Kawaii Bass sets itself apart from Future Funk with extensive use of *chiptune* sounds and strong upbeat rhythms.
+
+##### Futurepop
+Futurepop lies on the complete other end of the spectrum however, with dark low synths and rhythms characterizing
+its sound. These support raw, unedited vocals with lyrics I could only describe as "desperate". I believe that if the *Future* in its name refers to anything else than the extensive usage of synthesized sounds, it would refer to a distinctively dystopian and dark impression of the future.
+
+##### Future Garage and Future Ambient
+Future Garage and Future Ambient could both in a certain way be described as minimalistic. They use little instruments, which often repeat short musical fragments thoughout the whole song in a relatively low tempo. Strong drum grooves give structure to the songs, in which generally no distinctive melody or vocal part is present, especially in Future Ambient. There, slow reverberized synth sounds and sweeps give color to tracks. In this regard, Future Garage is certianly different. It features these synths too, but also contains a lot more acoustic "real" instruments, albeit often sampled, and the occasional "smooth" melody line. For both genres, the *Future* seems simply to be an indication of the electronical style and heavy usage of sampling.
+
+#### The Corpus
+
+The collections of songs we'll analyze, our corpus, will naturally be a selection of songs from artist from each of these genres. Large names such as Snail's House (who has in fact been credited to be the pioneer of Kawaii Future Bass, but is also listed as a Future Funk artist) will be of particular interest and multiple songs will be included, but some genres such as future ambient consist of mostly smaller artist, where a smaller and more varied selection of songs from different artist is more appropriate.
+
+It could also be helpful to compare some of the outliers of the genre, but care must be taken to ensure those artist would actually belong to the genre, instead of their appearance being based solely on Spotify's automatic assignment. If not, it will be more useful to exclude them from the research, as they would negatively interfere with making valid comparisons between the genres.
+
+For now, I used playlist largely based on playlists provided by the Every Noise at Once website (http://everynoise.com/), each around 50 tracks long.
+
+***
+
+```{r echo = FALSE}
+# TODO: table with corpus (might redefine the corpus if I have time)
+kable(all_genres %>% group_by(Genre) %>% summarize('Song Count'=n()),
+      caption = "The song count for the five genres (will probably be updated later)")
+
+# It might be insightful to also look at their non-future counterparts (if those exist), and see how each future genre differs from them to discover if any pattern may exist.
+```
+
+
+### First Investigations
+
+```{r echo = FALSE}
+# Make some plots
+scatter <- ggplot(all_genres,aes(x=Genre,size=Liveness,color=Energy)) + geom_jitter(aes(y=Valence)) + geom_bar(aes(x=Genre,y=Valence),alpha=0.3,stat="summary")
+danceability <- ggplot(all_genres,aes(color=Genre)) + geom_freqpoly(binwidth=0.15,aes(x=Danceability),size=1)
+valence <- ggplot(all_genres,aes(color=Genre)) + geom_freqpoly(binwidth=0.15,aes(x=Valence),size=1)
+energy <- ggplot(all_genres,aes(color=Genre)) + geom_freqpoly(binwidth=0.15,aes(x=Energy),size=1)
+```
+
+```{r echo = FALSE}
+ggplotly(scatter)
+```
+
+***
+
+#### Description
+An important finding of our preleminary research was the large devations of musical style between the genres. To me, valence seemed to be a logical choice for comparison, as I felt like the genres sounded most distict in this regard. The graph shows the average valence of the songs from each genre, as well as the value of each individual song in the form of a scatter plot. Additionally, the colour displays the energy value of the tracks, another feature I felt would provide contrast between the genres. Lastly, the size of each point gives an indication of the liveness of the track, as provided by Spotify.
+
+#### Results
+Surprisingly, we can see Futurepop actually has a somewhat high average, even higher than Kawaii Future Bass, something I think one would not concluded based on listening to the selections. As expected, Future Funk and Kawaii Future Bass do in general seem to be assigned higher valence values than Future Ambient and Future Garage.
+
+
+### Chroma, Cesptro and Chord Features
+
+```{r}
+
+kfb_milk <- get_analysis('4mCwspCTPF1aoWUNxsS5aD')
+ff_sunset <- get_analysis('0DvqAXyoA7zRB8wgH0DjRO')
+fp_forever <- get_analysis('47Gqy79zgQgvqIvjpkAcXE')
+fg_king <- get_analysis('6f1S3mOpU4TeoTZOJCmRXl')
+fa_freefloat <- get_analysis('5DJhoqNPXKVHmRNk9VXiZd')
+
+
+fp_chroma <- plot_chroma(fp_forever)   + ggtitle("Forever (Original Club Mix) - Chromagram")
+ff_chroma <- plot_chroma(ff_sunset)    + ggtitle("Ji-Eun's Sunset - Chromagram")
+kfb_chroma <- plot_chroma(kfb_milk)    + ggtitle("Hot Milk - Chromagram")
+fg_chroma <- plot_chroma(fg_king)      + ggtitle("King Bromeliad - Chromagram")
+fa_chroma <- plot_chroma(fa_freefloat) + ggtitle("Freefloat - Chromagram")
+
+fp_cesptro <- plot_cesptro(fp_forever)   + ggtitle("Forever (Original Club Mix) - Cesptrogram")
+ff_cesptro <- plot_cesptro(ff_sunset)    + ggtitle("Ji-Eun's Sunset - Cesptrogram")
+kfb_cesptro <- plot_cesptro(kfb_milk)    + ggtitle("Hot Milk - Cesptrogram")
+fg_cesptro <- plot_cesptro(fg_king)      + ggtitle("King Bromeliad - Cesptrogram")
+fa_cesptro <- plot_cesptro(fa_freefloat) + ggtitle("Freefloat - Cesptrogram")
+
+fp_chord <- plot_chord(fp_forever)   + ggtitle("Forever (Original Club Mix) - Chordogram")
+ff_chord <- plot_chord(ff_sunset)    + ggtitle("Ji-Eun's Sunset - Chordogram")
+kfb_chord <- plot_chord(kfb_milk)    + ggtitle("Hot Milk - Chordogram")
+fg_chord <- plot_chord(fg_king)      + ggtitle("King Bromeliad - Chordogram")
+fa_chord <- plot_chord(fa_freefloat) + ggtitle("Freefloat - Chordogram")
+```
+
+<style>
+.tab-button {
+  background-color: #E95420;
+  border: none;
+  color: white;
+  padding: 10px 10px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 1px;
+  cursor: pointer;
+  transition-duration: 0.1s;
+}
+
+.tab-button:hover {
+  background-color: #772953;
+  color: white;
+}
+
+.chroma {
+  animation: fadeIn 0.5s;
+}
+
+.chromahidden {
+  animation: fadeOut 0.5s;
+}
+
+@keyframes fadeIn {
+  from {opacity: 0;}
+  to {opacity: 1;}
+}
+@keyframes fadeOut {
+  from {opacity: 1;}
+  to {opacity: 0;}
+}
+
+</style>
+
+<script>
+function openChroma(name) {
+  var i;
+  var divs = document.getElementsByClassName("chroma");
+  for (i = 0; i < divs.length; i++) {
+    divs[i].style.display = "none";
+  }
+  document.getElementById(name).style.display = "block";
+}
+</script>
+<center>
+
+<div id="kfb" class="chroma" height="100%">
+```{r out.width = '80%'}
+kfb_chroma
+```
+<hr>
+```{r out.width = '80%'}
+kfb_cesptro
+```
+<hr>
+```{r out.width = '80%'}
+kfb_chord
+```
+</div>
+<div id="ff" class="chroma" style="display:none">
+```{r out.width = '80%'}
+ff_chroma
+```
+<hr>
+```{r out.width = '80%'}
+ff_cesptro
+```
+<hr>
+```{r out.width = '80%'}
+ff_chord
+```
+</div>
+<div id="fg" class="chroma" style="display:none">
+```{r out.width = '80%'}
+fg_chroma
+```
+<hr>
+```{r out.width = '80%'}
+fg_cesptro
+```
+<hr>
+```{r out.width = '80%'}
+fg_chord
+```
+</div>
+<div id="fa" class="chroma" style="display:none">
+```{r out.width = '80%'}
+fa_chroma
+```
+<hr>
+```{r out.width = '80%'}
+fa_cesptro
+```
+<hr>
+```{r out.width = '80%'}
+fa_chord
+```
+</div>
+<div id="fp" class="chroma" style="display:none">
+```{r out.width = '80%'}
+fp_chroma
+```
+<hr>
+```{r out.width = '80%'}
+fp_cesptro
+```
+<hr>
+```{r out.width = '80%'}
+fp_chord
+```
+
+<nav class="tab" width="50%">
+    <button class="tab-button" onclick="openChroma('ff')">Future Funk</button>
+    <button class="tab-button" onclick="openChroma('kfb')">Kawaii Future Base</button>
+    <button class="tab-button" onclick="openChroma('fg')">Future Garage</button>
+    <button class="tab-button" onclick="openChroma('fa')">Future Ambient</button>
+    <button class="tab-button" onclick="openChroma('fp')">Futurepop</button>
+</nav>
+
+</div>
+</center>
+
+***
+
+#### Description
+Here we can see a chromagram, cepstrogram and chordogram of a single somewhat representative song for every genre.
+The songs are picked by hand, which ensures a totally subjective view of every genre, but I think it can be a
+useful tool for analysis nonetheless.
+In no particular order, these songs are:
+
+ - Forever (Original Club Mix) - Bruderschaft (Futurepop)
+ - Ji-Eun's Sunset - City Girl (Future Funk)
+ - Hot Milk - Snail's House (Kawaii Future Bass)
+ - King Bromeliad - Floating Points (Future Garage)
+ - Freefloat - Aural Float (Future Ambient)
+
+Each song is compared using the same norm to allow for fair comparisons.
+
+<center>
+<nav class="tab" width="50%">
+    <button class="tab-button" onclick="openChroma('ff')">Future Funk</button>
+    <button class="tab-button" onclick="openChroma('kfb')">Kawaii Future Base</button>
+    <button class="tab-button" onclick="openChroma('fg')">Future Garage</button>
+    <button class="tab-button" onclick="openChroma('fa')">Future Ambient</button>
+    <button class="tab-button" onclick="openChroma('fp')">Futurepop</button>
+</nav>
+</center>
+
+The first thing one may notice is the differences in repetitions between the genres. The Future Garage song
+especially has a very homogeneous structure judging from the three c-grams. Future Ambient is similar, but seems
+to have two different sections which both show a lot of individual repetition.

@@ -1,4 +1,4 @@
-
+#----- SOME FUNCTIONS -----#
 
 # Remove unnecessary data received from the Spotify API, and
 # select which columns are usefull to us.
@@ -26,279 +26,110 @@ remove_junk <- function(data) {
            KeyMode=key_mode)
 }
 
-#----- AUDIO ANALYSIS FUNCTIONS -----#
 
-#' Get Spotify audio analysis tidily.
-#'
-#' Loads the Spotify audio analysis for a track without extra
-get_tidy_audio_analysis <- function(track_uri, ...)
-{
-    get_track_audio_analysis(track_uri, ...) %>%
-        list %>% transpose %>% as_tibble %>%
-        mutate_at(vars(meta, track), . %>% map(as_tibble)) %>%
-        unnest(meta, track) %>%
-        select(
-            analyzer_version,
-            duration,
-            contains('fade'),
-            ends_with('confidence'),
-            bars:segments) %>%
-        mutate_at(
-            vars(bars, beats, tatums, sections),
-            . %>% map(bind_rows)) %>%
-        mutate(
-            segments =
-                map(
-                    segments,
-                    . %>%
-                        transpose %>% as_tibble %>%
-                        unnest(.preserve = c(pitches, timbre)) %>%
-                        mutate(
-                            pitches =
-                                map(
-                                    pitches,
-                                    . %>%
-                                        flatten_dbl %>%
-                                        set_names(
-                                            c(
-                                                'C', 'C#|Db', 'D', 'D#|Eb',
-                                                'E', 'F', 'F#|Gb', 'G',
-                                                'G#|Ab', 'A', 'A#|Bb', 'B'))),
-                            timbre =
-                                map(
-                                    timbre,
-                                    . %>%
-                                        flatten_dbl %>%
-                                        set_names(
-                                            c(
-                                                'c01', 'c02', 'c03', 'c04',
-                                                'c05', 'c06', 'c07', 'c08',
-                                                'c09', 'c10', 'c11', 'c12'))))))
-}
-
-#----- NORMS AND DISTANCE FUNCTIONS -----#
-
-#' Normalise vectors for Computational Musicology.
-#'
-#' We use a number of normalisation strategies in Computational Musicology.
-#' This function brings them together into one place, along with common
-#' alternative names.
-compmus_normalise <- compmus_normalize <- function(v, method = 'euclidean')
-{
-    ## Supported functions
-
-    harmonic  <- function(v) v * sum(1 / abs(v))
-    manhattan <- function(v) v / sum(abs(v))
-    euclidean <- function(v) v / sqrt(sum(v^2))
-    chebyshev <- function(v) v / max(abs(v))
-    clr       <- function(v) {lv <- log(v); lv - mean(lv)}
-
-    ## Method aliases
-
-    METHODS <-
-        list(
-            identity  = identity,
-            id        = identity,
-            harmonic  = harmonic,
-            manhattan = manhattan,
-            L1        = manhattan,
-            euclidean = euclidean,
-            L2        = euclidean,
-            chebyshev = chebyshev,
-            maximum   = chebyshev,
-            aitchison = clr,
-            clr       = clr)
-
-    ## Function selection
-
-    if (!is.na(i <- pmatch(method, names(METHODS))))
-        METHODS[[i]](v)
-    else
-        stop('The method name is ambiguous or the method is unsupported.')
-}
-
-#' Compute pairwise distances for Computational Musicology in long format.
-#'
-#' We use a number of distance measures in Computational Musicology.
-#' This function brings them together into one place, along with common
-#' alternative names. It is designed for convenience, not speed.
-compmus_long_distance <- function(xdat, ydat, feature, method = 'euclidean')
-{
-
-    feature <- enquo(feature)
-
-    ## Supported functions
-
-    manhattan <- function(x, y) sum(abs(x - y))
-    euclidean <- function(x, y) sqrt(sum((x - y) ^ 2))
-    chebyshev <- function(x, y) max(abs(x - y))
-    pearson   <- function(x, y) 1 - cor(x, y)
-    cosine    <- function(x, y)
-    {
-        1 - sum(compmus_normalise(x, 'euc') * compmus_normalise(y, 'euc'))
-    }
-    angular   <- function(x, y) 2 * acos(1 - cosine(x, y)) / pi
-    aitchison <- function(x, y)
-    {
-        euclidean(compmus_normalise(x, 'clr'), compmus_normalise(y, 'clr'))
-    }
-
-    ## Method aliases
-
-    METHODS <-
-        list(
-            manhattan   = manhattan,
-            cityblock   = manhattan,
-            taxicab     = manhattan,
-            L1          = manhattan,
-            totvar      = manhattan,
-            euclidean   = euclidean,
-            L2          = euclidean,
-            chebyshev   = chebyshev,
-            maximum     = chebyshev,
-            pearson     = pearson,
-            correlation = pearson,
-            cosine      = cosine,
-            angular     = angular,
-            aitchison   = aitchison)
-
-    ## Function selection
-
-    if (!is.na(i <- pmatch(method, names(METHODS))))
-        bind_cols(
-            crossing(
-                xdat %>% select(xstart = start, xduration = duration),
-                ydat %>% select(ystart = start, yduration = duration)),
-            xdat %>% select(x = !!feature) %>%
-                crossing(ydat %>% select(y = !!feature)) %>%
-                transmute(d = map2_dbl(x, y, METHODS[[i]])))
-    else
-        stop('The method name is ambiguous or the method is unsupported.')
-}
-
-
-compmus_self_similarity <- function(dat, feature, method = 'euclidean')
-{
-    feature <- enquo(feature)
-    compmus_long_distance(dat, dat, !!feature, method)
-}
-
-
-#----- SUMMARIES -----#
-
-#' Summarise vector-based features in list columns.
-#'
-#' Summarise vector-based featrues in list columns. Does not work with classical tidyverse grouping.
-compmus_summarise <- compmus_summarize <- function(dat, feature, method = 'mean', norm = 'id')
-{
-    feature <- enquo(feature)
-
-    ## Support functions
-    ## TODO: Add geometric median and Chebyshev center.
-    ## TODO: Search for minimum sum of angular distances in hyper-quadrant I.
-
-    clr     <- function(v) {lv = log(v); lv - mean(lv)}
-    softmax <- function(v) {exp(v) / sum(exp(v))}
-    square  <- function(v) v^2
-    not_max  <- function(v) v != max(v)
-
-    ## Method aliases
-
-    METHODS <-
-        list(
-            ## Central tendencies
-            mean      = list( identity , mean , identity ),
-            aitchison = list( clr      , mean , softmax  ),
-            acenter   = list( clr      , mean , softmax  ),
-            acentre   = list( clr      , mean , softmax  ),
-            rms       = list( square   , mean , sqrt     ),
-            max       = list( identity , max  , identity ),
-            ## Dispersions
-            sd        = list( identity , sd   , identity ),
-            asd       = list( clr      , sd   , identity ),
-            sdsq      = list( square   , sd   , identity ),
-            varratio  = list( not_max  , mean , identity ))
-
-    ## Function selection
-
-    if (!is.na(i <- pmatch(method, names(METHODS))))
-        dat %>%
-        transmute(
-            !!feature :=
-                map(
-                    !!feature,
-                    . %>%
-                        compmus_normalise(norm) %>%
-                        (METHODS[[i]][[1]]) %>%
-                        bind_rows)) %>%
-        unnest(!!feature) %>%
-        summarise_all(METHODS[[i]][[2]]) %>%
-        map_dbl(1) %>%
-        (METHODS[[i]][[3]])
-    else
-        stop('The method name is ambiguous or the method is unsupported.')
-}
-
-compmus_align_helper <- function(start0, duration0, inner)
-{
-    end0 <- start0 + duration0
-
-    inner %>%
-        filter(start < end0) %>%
-        filter(
-            pmin(end, end0) - pmax(start, start0) >=
-                pmin(duration, duration0) / 2) %>%
-        select(-end)
-}
-
-compmus_align_reduce <- function(outer, inner, name)
-{
-    outer %>%
-        mutate(
-            !!name :=
-                map2(
-                    start,
-                    duration,
-                    compmus_align_helper,
-                    inner %>% mutate(end = start + duration)))
-}
-
-#' Aligns lower-level Spotify segmentations with higher-level segmentations.
-#'
-#' Returns a list column with tibbles of the lower-level segment for each higher-level segement.
-compmus_align <- function(dat, outer, inner)
-{
-    outer <- enquo(outer)
-    inner <- enquo(inner)
-
+get_analysis <- function(id) {
+    # return(get_tidy_audio_analysis(id) %>%
+    #        select(segments) %>%
+    #        unnest(segments) %>%
+    #        select(start, duration, pitches))
+    return(get_tidy_audio_analysis(id) %>%
+    compmus_align(bars, segments) %>%
+    select(bars) %>% unnest(bars) %>%
     mutate(
-        dat,
-        !!outer := map2(!!outer, !!inner, compmus_align_reduce, inner)) %>%
-        select(-!!inner)
+        pitches =
+            map(segments,
+                compmus_summarise, pitches,
+                method = 'rms', norm = 'euclidean')) %>%
+    mutate(
+        timbre =
+            map(segments,
+                compmus_summarise, timbre,
+                method = 'mean')))
+}
+
+plot_chroma <- function(data) {
+    return(data %>%
+        mutate(pitches = map(pitches, compmus_normalise, 'chebyshev')) %>%
+        compmus_gather_chroma %>%
+        ggplot(
+            aes(
+                x = start + duration / 2,
+                width = duration,
+                y = pitch_class,
+                fill = value)) +
+        geom_tile() +
+        labs(x = 'Time (s)', y = NULL, fill = 'Magnitude') +
+        theme_minimal())
+}
+
+plot_cesptro <- function(data) {
+    return(data %>%
+        compmus_gather_timbre %>%
+        ggplot(
+            aes(
+                x = start + duration / 2,
+                width = duration,
+                y = basis,
+                fill = value)) +
+        geom_tile() +
+        labs(x = 'Time (s)', y = NULL, fill = 'Magnitude') +
+        scale_fill_viridis_c(option = 'E') +
+        theme_classic())
 }
 
 
-#----- UNWRAPPING CHROMA VECTORS -----#
-
-#' Gathers chroma vectors into long format.
-#'
-#' Gathers chroma vectors into long format for Computational Musicology.
-compmus_gather_chroma <- function(data)
-{
-    data %>%
-        mutate(pitches = map(pitches, bind_rows)) %>% unnest(pitches) %>%
-        gather('pitch_class', 'value', C:B) %>%
-        mutate(pitch_class = fct_shift(factor(pitch_class), 3))
-}
-
-#' Gathers timbre vectors into long format.
-#'
-#' Gathers timbre vectors into long format for Computational Musicology.
-compmus_gather_timbre <- function(data)
-{
-    data %>%
-        mutate(timbre = map(timbre, bind_rows)) %>% unnest(timbre) %>%
-        gather('basis', 'value', c01:c12)
+plot_ssm <- function(data) {
+    return(data %>%
+        compmus_self_similarity(timbre, 'cosine') %>%
+        ggplot(
+            aes(
+                x = xstart + xduration / 2,
+                width = xduration,
+                y = ystart + yduration / 2,
+                height = yduration,
+                fill = d)) +
+        geom_tile() +
+        coord_fixed() +
+        scale_fill_viridis_c(option = 'E', guide = 'none') +
+        theme_classic() +
+        labs(x = '', y = ''))
 }
 
 
+
+# -------- Load Data --------- #
+
+if (!file.exists("data/ff.rds") {
+    future_funk <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","4a0xb2zui3hIPll7CMgeSu"))
+    writeRDS(future_funk, "data/ff.rds")
+} else {
+    future_funk <- readRDS("data/ff.rds")
+}
+
+if (!file.exists("data/kfb.rds") {
+    kawaii_future_bass <- remove_junk( get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","75OfhBfc4tnQ8MFdiPiMcx"))
+    writeRDS(kawaii_future_bass, "data/kfb.rds")
+} else {
+    kawaii_future_bass <- readRDS("data/kfb.rds")
+}
+
+if (!file.exists("data/fp.rds") {
+    futurepop <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","1TBQdi8VdYsvruWv1W5HjB"))
+    writeRDS(futurepop, "data/fp.rds")
+} else {
+    futurepop <- readRDS("data/fp.rds")
+}
+
+if (!file.exists("data/fa.rds") {
+    future_ambient <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","2dZ7eWcGRtuyseKY5QNZoP"))
+    writeRDS(future_ambient, "data/fa.rds")
+} else {
+    future_ambient <- readRDS("data/fa.rds")
+}
+
+if (!file.exists("data/fg.rds") {
+    future_garage <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","2IgZ50kclGP2tNVx7mu9vL"))
+    writeRDS(future_garage, "data/fg.rds")
+} else {
+    future_garage <- readRDS("data/fg.rds")
+}

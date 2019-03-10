@@ -6,7 +6,6 @@ output:
     flexdashboard::flex_dashboard:
         storyboard: true
         theme: united
-runtime: shiny
 ---
 
 
@@ -15,7 +14,8 @@ library(tidyverse)
 library(spotifyr)
 library(plotly)
 library(knitr)
-library(gridExtra)
+library(compmus)
+library(shiny)
 source("functions.r")
 ```
 
@@ -23,11 +23,6 @@ source("functions.r")
 
 ```{r echo = FALSE}
 # Get playlist data
-future_funk <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","4a0xb2zui3hIPll7CMgeSu"))
-kawaii_future_bass <- remove_junk( get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","75OfhBfc4tnQ8MFdiPiMcx"))
-futurepop <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","1TBQdi8VdYsvruWv1W5HjB"))
-future_ambient <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","2dZ7eWcGRtuyseKY5QNZoP"))
-future_garage <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","2IgZ50kclGP2tNVx7mu9vL"))
 
 all_genres <- rbind(future_funk,kawaii_future_bass,futurepop,future_ambient,future_garage)
 ```
@@ -40,15 +35,15 @@ Spotify has several curious genres within its database, including some which are
 - Future Ambient
 - Future Garage
 
-It is definitely not clear if these genres are connected by something more than just their name. We'll explore why these genres are called the way the are, and if a (strong) connection might actually tie these genres together. This will consist of exploring the aspects of the music within each genre first, after which we will properly compare the 5 genres by defining a suitable corpus and providing insightful visualizations of the audio analysis data provided by the Spotify API.
+It is definitely not clear if these genres are connected by something more than just their name. We'll explore why these genres are called the way the are, and if a (strong) connection might actually tie these genres together. This will consist of exploring the aspects of the music within each genre first, after which we will properly compare the 5 genres by defining a suitable corpus and providing insightful visualizations of the audio analysis data provided by the [Spotify API](https://www.rcharlie.com/spotifyr/), using some features provided by the [compmus R package](https://jaburgoyne.github.io/compmus/).
 
 <center>
 <br><br>
-<img src="../assets/futurefunk1.jpeg" height="200px">
-<img src="../assets/kawaiifuturebass1.jpg" height="200px">
-<img src="../assets/futurepop1.jpeg" height="200px">
-<img src="../assets/futureambient1.jpg" height="200px" margin=20px">
-<img src="../assets/futuregarage1.jpg" height="200px">
+<img src="assets/futurefunk1.jpeg" height="200px">
+<img src="assets/kawaiifuturebass1.jpg" height="200px">
+<img src="assets/futurepop1.jpeg" height="200px">
+<img src="assets/futureambient1.jpg" height="200px" margin=20px">
+<img src="assets/futuregarage1.jpg" height="200px">
 </center>
 
 ```{r}
@@ -74,8 +69,6 @@ Some sound samples from the different genres (in fact, these playlist together a
 
 <center>
 </center>
-
-
 
 ### A Future of Sounds, Rhythms and Timbres {data-commentary-width=400}
 
@@ -136,62 +129,12 @@ An important finding of our preleminary research was the large devations of musi
 Surprisingly, we can see Futurepop actually has a somewhat high average, even higher than Kawaii Future Bass, something I think one would not concluded based on listening to the selections. As expected, Future Funk and Kawaii Future Bass do in general seem to be assigned higher valence values than Future Ambient and Future Garage.
 
 
-### Chromagrams
+### Chroma and Cesptro Features
 
 
 
 
 ```{r}
-
-get_analysis <- function(id) {
-    # return(get_tidy_audio_analysis(id) %>%
-    #        select(segments) %>%
-    #        unnest(segments) %>%
-    #        select(start, duration, pitches))
-    return(get_tidy_audio_analysis(id) %>%
-    compmus_align(bars, segments) %>%
-    select(bars) %>% unnest(bars) %>%
-    mutate(
-        pitches =
-            map(segments,
-                compmus_summarise, pitches,
-                method = 'rms', norm = 'euclidean')) %>%
-    mutate(
-        timbre =
-            map(segments,
-                compmus_summarise, timbre,
-                method = 'mean')))
-}
-
-plot_chroma <- function(data) {
-    return(data %>%
-        mutate(pitches = map(pitches, compmus_normalise, 'chebyshev')) %>%
-        compmus_gather_chroma %>%
-        ggplot(
-            aes(
-                x = start + duration / 2,
-                width = duration,
-                y = pitch_class,
-                fill = value)) +
-        geom_tile() +
-        labs(x = 'Time (s)', y = NULL, fill = 'Magnitude') +
-        theme_minimal())
-}
-
-plot_cesptro <- function(data) {
-    return(data %>%
-        compmus_gather_timbre %>%
-        ggplot(
-            aes(
-                x = start + duration / 2,
-                width = duration,
-                y = basis,
-                fill = value)) +
-        geom_tile() +
-        labs(x = 'Time (s)', y = NULL, fill = 'Magnitude') +
-        scale_fill_viridis_c(option = 'E') +
-        theme_classic())
-}
 
 kfb_milk <- get_analysis('4mCwspCTPF1aoWUNxsS5aD')
 ff_sunset <- get_analysis('0DvqAXyoA7zRB8wgH0DjRO')
@@ -214,20 +157,27 @@ pl10 <- plot_cesptro(fa_freefloat) # + ggtitle("Freefloat - Aural Float (Future 
 #grid.arrange(grobs = list(pl1,pl2,pl3,pl4,pl5,pl6,pl7,pl8,pl9,pl10),ncols=5)
 #renderPlot
 
-pl1
-pl6
+subpl1 <- subplot(ggplotly(pl1,hoverinfo="none"),ggplotly(pl6,hoverinfo="none"))
+#subpl1 <- plotly::config(subpl1, collaborate = F, doubleClick = F, displayModeBar = F)
 
-pl2
-pl7
-
-pl3
-pl8
-
-pl4
-pl9
-
-pl5
-pl10
+#ggplotly(pl1) %>% config(displayModeBar = F)
+tags$div(
+  tags$div(
+    subpl1
+  ),
+  tags$div(
+    subplot(pl2,pl7)
+  ),
+  tags$div(
+    subplot(pl3,pl8)
+  ),
+  tags$div(
+    subplot(pl4,pl9)
+  ),
+  tags$div(
+    subplot(pl5,pl10)
+  )
+ )
 
 ```
 
@@ -246,6 +196,5 @@ In order, these songs are:
  - Freefloat - Aural Float (Future Ambient)
 
 ```{r}
-# selectInput("n_breaks", label = "Song to choose",
-#             choices = c("Forever","Ji-Eun's Sunset","Hot Milk","King Bromeliad","Freefloat"), selected = "Hot Milk")
 ```
+
