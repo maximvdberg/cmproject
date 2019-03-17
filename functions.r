@@ -199,6 +199,7 @@ plot_chord <- function(data) {
 
 # -------- Load Data --------- #
 
+# Playlist data
 if (!file.exists("data/ff.rds")) {
     future_funk <- remove_junk(get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","4a0xb2zui3hIPll7CMgeSu"))
     saveRDS(future_funk, "data/ff.rds")
@@ -232,4 +233,46 @@ if (!file.exists("data/fg.rds")) {
     saveRDS(future_garage, "data/fg.rds")
 } else {
     future_garage <- readRDS("data/fg.rds")
+}
+
+
+# Playlist audio feature
+if (!file.exists("data/ff_full.rds")) {
+    future_funk_full <- get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","4a0xb2zui3hIPll7CMgeSu") %>%
+        add_audio_analysis
+    saveRDS(future_funk_full, "data/ff_full.rds")
+} else {
+    future_funk_full <- readRDS("data/ff_full.rds")
+}
+
+if (!file.exists("data/kfb_full.rds")) {
+    kawaii_future_bass_full <-  get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","75OfhBfc4tnQ8MFdiPiMcx") %>%
+        add_audio_analysis
+    saveRDS(kawaii_future_bass_full, "data/kfb_full.rds")
+} else {
+    kawaii_future_bass_full <- readRDS("data/kfb_full.rds")
+}
+
+if (!file.exists("data/fp_full.rds")) {
+    futurepop_full <- get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","1TBQdi8VdYsvruWv1W5HjB") %>%
+        add_audio_analysis
+    saveRDS(futurepop_full, "data/fp_full.rds")
+} else {
+    futurepop_full <- readRDS("data/fp_full.rds")
+}
+
+if (!file.exists("data/fa_full.rds")) {
+    future_ambient_full <- get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","2dZ7eWcGRtuyseKY5QNZoP") %>%
+        add_audio_analysis
+    saveRDS(future_ambient_full, "data/fa_full.rds")
+} else {
+    future_ambient_full <- readRDS("data/fa_full.rds")
+}
+
+if (!file.exists("data/fg_full.rds")) {
+    future_garage_full <- get_playlist_audio_features("bkd0b33gypt1ixtyg44x4y2ui","2IgZ50kclGP2tNVx7mu9vL") %>%
+        add_audio_analysis
+    saveRDS(future_garage_full, "data/fg_full.rds")
+} else {
+    future_garage_full <- readRDS("data/fg_full.rds")
 }

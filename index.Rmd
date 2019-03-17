@@ -8,24 +8,21 @@ output:
         theme: united
 ---
 
-
-```{r echo = FALSE, messages = FALSE}
+```{r source, echo = FALSE, messages = FALSE}
 library(tidyverse)
+library(tidymodels)
 library(spotifyr)
 library(plotly)
 library(knitr)
 library(compmus)
 library(shiny)
+
+# Get playlist data
 source("functions.r")
+all_genres <- rbind(future_funk,kawaii_future_bass,futurepop,future_ambient,future_garage)
 ```
 
 ### An Introduction to Spotify's Genres of the Future {data-commentary-width=400}
-
-```{r echo = FALSE}
-# Get playlist data
-
-all_genres <- rbind(future_funk,kawaii_future_bass,futurepop,future_ambient,future_garage)
-```
 
 Spotify has several curious genres within its database, including some which are characterized by the word *future*. Namely, the following selection:
 
@@ -62,49 +59,162 @@ Some sound samples from the different genres (in fact, these playlist together a
 </center>
 
 
-### A Future of Sounds, Rhythms and Timbres {data-commentary-width=400}
+### A Future of Sounds, Rhythms and Timbres - A Classification by Spotify's API features {data-commentary-width=800}
 
-#### A Short Examination of the Genres
-##### Future Funk and Kawaii Bass
-From exploring the genres and listening to some excerpts of their music, we can quickly suspect that the *future* description might mean something entirely different per genre. In the case of Future Funk and Kawaii Future Bass, it seems to refer to a futuristic pop-y sound, with a distinct electronic feel, although real (sampled) instruments and some vocals (often with light-hearted lyrics) now and then are common too, especially in Future Funk. Future Kawaii Bass sets itself apart from Future Funk with extensive use of *chiptune* sounds and strong upbeat rhythms.
+```{r random_forest}
+# Gather all the data
+future_full <-
+    future_funk_full %>% mutate(playlist = "Future Funk") %>%
+    bind_rows(
+        kawaii_future_bass_full %>% mutate(playlist = "Kawaii Future Funk"),
+        futurepop_full %>% mutate(playlist = "Futurepop"),
+        future_ambient_full %>% mutate(playlist = "Future Ambient"),
+        future_garage_full %>% mutate(playlist = "Future Garage")) %>%
+    mutate(playlist = factor(playlist)) %>%
+    mutate(
+        segments =
+            map2(segments, key, compmus_c_transpose)) %>%
+    mutate(
+        pitches =
+            map(segments,
+                compmus_summarise, pitches,
+                method = 'mean', norm = 'manhattan'),
+        timbre =
+            map(
+                segments,
+                compmus_summarise, timbre,
+                method = 'mean')) %>%
+    mutate(pitches = map(pitches, compmus_normalise, 'clr')) %>%
+    mutate_at(vars(pitches, timbre), map, bind_rows) %>%
+    unnest(pitches, timbre)
 
-##### Futurepop
-Futurepop lies on the complete other end of the spectrum however, with dark low synths and rhythms characterizing
-its sound. These support raw, unedited vocals with lyrics I could only describe as "desperate". I believe that if the *Future* in its name refers to anything else than the extensive usage of synthesized sounds, it would refer to a distinctively dystopian and dark impression of the future.
+# Prepare the data for classification
+future_class <-
+    recipe(playlist ~
+               danceability +
+               energy +
+               loudness +
+               speechiness +
+               acousticness +
+               instrumentalness +
+               liveness +
+               valence +
+               tempo +
+               duration_ms +
+               C + `C#|Db` + D + `D#|Eb` +
+               E + `F` + `F#|Gb` + G +
+               `G#|Ab` + A + `A#|Bb` + B +
+               c01 + c02 + c03 + c04 + c05 + c06 +
+               c07 + c08 + c09 + c10 + c11 + c12,
+           data = future_full) %>%
+    step_center(all_predictors()) %>%
+    # step_scale(all_predictors()) %>%
+    step_range(all_predictors()) %>%
+    prep(future_full) %>%
+    juice
 
-##### Future Garage and Future Ambient
-Future Garage and Future Ambient could both in a certain way be described as minimalistic. They use little instruments, which often repeat short musical fragments thoughout the whole song in a relatively low tempo. Strong drum grooves give structure to the songs, in which generally no distinctive melody or vocal part is present, especially in Future Ambient. There, slow reverberized synth sounds and sweeps give color to tracks. In this regard, Future Garage is certianly different. It features these synths too, but also contains a lot more acoustic "real" instruments, albeit often sampled, and the occasional "smooth" melody line. For both genres, the *Future* seems simply to be an indication of the electronical style and heavy usage of sampling.
+future_cv <- future_class %>% vfold_cv(5)
 
-#### The Corpus
+# Set up the random forest
+future_forest <- rand_forest() %>% set_engine('randomForest')
+predict_forest <- function(split)
+    fit(future_forest, playlist ~ ., data = analysis(split)) %>%
+    predict(assessment(split), type = 'class') %>%
+    bind_cols(assessment(split))
 
-The collections of songs we'll analyze, our corpus, will naturally be a selection of songs from artist from each of these genres. Large names such as Snail's House (who has in fact been credited to be the pioneer of Kawaii Future Bass, but is also listed as a Future Funk artist) will be of particular interest and multiple songs will be included, but some genres such as future ambient consist of mostly smaller artist, where a smaller and more varied selection of songs from different artist is more appropriate.
+# future_cv %>%
+#     mutate(pred = map(splits, predict_forest)) %>%
+#     unnest(pred) %>%
+#     metric_set(accuracy, kap, j_index)(truth = playlist, estimate = .pred_class)
 
-It could also be helpful to compare some of the outliers of the genre, but care must be taken to ensure those artist would actually belong to the genre, instead of their appearance being based solely on Spotify's automatic assignment. If not, it will be more useful to exclude them from the research, as they would negatively interfere with making valid comparisons between the genres.
+```
 
-For now, I used playlist largely based on playlists provided by the Every Noise at Once website (http://everynoise.com/), each around 50 tracks long.
+```{r forest_plot}
+forest_plot <- future_class %>%
+    fit(future_forest, playlist ~ ., data = .) %>%
+    pluck('fit') %>%
+    randomForest::varImpPlot()
+
+forest_plot <- as.data.frame(forest_plot)
+forest_plot$varnames <- rownames(forest_plot) # row names to column
+rownames(forest_plot) <- NULL
+# forest_plot$var_categ <- rep(1:2, 5) # random var category
+
+forest_ggplot <- ggplot(forest_plot, aes(x=reorder(varnames, MeanDecreaseGini), y=MeanDecreaseGini)) +
+    geom_point(color = "#772953") +
+    geom_segment(aes(x=varnames,xend=varnames,y=0,yend=MeanDecreaseGini), color = "#E95420") +
+    ylab("Importance Value") +
+    xlab("Variable Name") +
+    title("Importance of classification features") +
+    coord_flip()
+
+ggplotly(forest_ggplot)
+```
 
 ***
 
-```{r echo = FALSE}
+#### A Short Ad Hoc Examination of the Genres
+__Future Funk and Kawaii Bass__
+
+From exploring the genres and listening to some excerpts of their music, we can quickly suspect that the *future* description might mean something entirely different per genre. In the case of Future Funk and Kawaii Future Bass, it seems to refer to a futuristic pop-y sound, with a distinct electronic feel, although real (sampled) instruments and some vocals (often with light-hearted lyrics) now and then are common too, especially in Future Funk. Future Kawaii Bass sets itself apart from Future Funk with extensive use of *chiptune* sounds and strong upbeat rhythms.
+
+__Futurepop__
+
+Futurepop lies on the complete other end of the spectrum however, with dark low synths and rhythms characterizing
+its sound. These support raw, unedited vocals with lyrics I could only describe as "desperate".
+I believe that if the *Future* in its name refers to anything else than the extensive usage of synthesized sounds,
+it would refer to a distinctively dystopian and dark impression of the future.
+
+__Future Garage and Future Ambient__
+
+Future Garage and Future Ambient could both in a certain way be described as minimalistic.
+They use little instruments, which often repeat short musical fragments thoughout the whole song in
+a relatively low tempo. Strong drum grooves give structure to the songs, in which generally no distinctive
+melody or vocal part is present, especially in Future Ambient. There, slow reverberized synth sounds and
+sweeps give color to tracks. In this regard, Future Garage is certianly different. It features these synths
+too, but also contains a lot more acoustic "real" instruments, albeit often sampled, and the occasional
+"smooth" melody line. For both genres, the *Future* seems simply to be an indication of the electronical
+style and heavy usage of sampling.
+
+#### The Corpus
+
+The collections of songs we'll analyze, our corpus, will naturally be a selection of songs from artist
+from each of these genres. Large names such as Snail's House (who has in fact been credited to be the pioneer
+of Kawaii Future Bass, but is also listed as a Future Funk artist) will be of particular interest and multiple
+songs will be included, but some genres such as future ambient consist of mostly smaller artist, where a smaller
+and more varied selection of songs from different artist is more appropriate.
+
+It could also be helpful to compare some of the outliers of the genre, but care must be taken to ensure those
+artist would actually belong to the genre, instead of their appearance being based solely on Spotify's
+automatic assignment. If not, it will be more useful to exclude them from the research, as they would
+negatively interfere with making valid comparisons between the genres.
+
+For now, I used playlist largely based on playlists provided by the Every Noise at Once website
+(http://everynoise.com/), each around 50 tracks long.
+
+
+```{r corpus_table, echo = FALSE}
 # TODO: table with corpus (might redefine the corpus if I have time)
 kable(all_genres %>% group_by(Genre) %>% summarize('Song Count'=n()),
       caption = "The song count for the five genres (will probably be updated later)")
 
 # It might be insightful to also look at their non-future counterparts (if those exist), and see how each future genre differs from them to discover if any pattern may exist.
+
 ```
 
 
 ### First Investigations
 
-```{r echo = FALSE}
+```{r plot_scatter1, echo = FALSE}
 # Make some plots
-scatter <- ggplot(all_genres,aes(x=Genre,size=Liveness,color=Energy)) + geom_jitter(aes(y=Valence)) + geom_bar(aes(x=Genre,y=Valence),alpha=0.3,stat="summary")
+scatter <- ggplot(all_genres,aes(x=Genre,size=Liveness,color=Energy)) +
+    geom_jitter(aes(y=Valence)) +
+    geom_bar(aes(x=Genre,y=Valence),alpha=0.3,stat="summary") +
+    scale_colour_gradient(high = "#772953", low = "#E95420")
 danceability <- ggplot(all_genres,aes(color=Genre)) + geom_freqpoly(binwidth=0.15,aes(x=Danceability),size=1)
 valence <- ggplot(all_genres,aes(color=Genre)) + geom_freqpoly(binwidth=0.15,aes(x=Valence),size=1)
 energy <- ggplot(all_genres,aes(color=Genre)) + geom_freqpoly(binwidth=0.15,aes(x=Energy),size=1)
-```
 
-```{r echo = FALSE}
 ggplotly(scatter)
 ```
 
@@ -119,7 +229,7 @@ Surprisingly, we can see Futurepop actually has a somewhat high average, even hi
 
 ### Chroma, Cesptro and Chord Features
 
-```{r}
+```{r chroma_cepstro_chord}
 
 kfb_milk <- get_analysis('4mCwspCTPF1aoWUNxsS5aD')
 ff_sunset <- get_analysis('0DvqAXyoA7zRB8wgH0DjRO')
@@ -262,14 +372,6 @@ fp_cesptro
 ```{r out.width = '80%'}
 fp_chord
 ```
-
-<nav class="tab" width="50%">
-    <button class="tab-button" onclick="openChroma('ff')">Future Funk</button>
-    <button class="tab-button" onclick="openChroma('kfb')">Kawaii Future Base</button>
-    <button class="tab-button" onclick="openChroma('fg')">Future Garage</button>
-    <button class="tab-button" onclick="openChroma('fa')">Future Ambient</button>
-    <button class="tab-button" onclick="openChroma('fp')">Futurepop</button>
-</nav>
 
 </div>
 </center>
