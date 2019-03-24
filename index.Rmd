@@ -16,6 +16,9 @@ library(plotly)
 library(knitr)
 library(compmus)
 library(shiny)
+library(ggdendro)
+library(protoclust)
+library(heatmaply)
 
 # Get playlist data
 source("functions.r")
@@ -62,31 +65,6 @@ Some sound samples from the different genres (in fact, these playlist together a
 ### A Future of Sounds, Rhythms and Timbres - A Classification by Spotify's API features {data-commentary-width=800}
 
 ```{r random_forest}
-# Gather all the data
-future_full <-
-    future_funk_full %>% mutate(playlist = "Future Funk") %>%
-    bind_rows(
-        kawaii_future_bass_full %>% mutate(playlist = "Kawaii Future Funk"),
-        futurepop_full %>% mutate(playlist = "Futurepop"),
-        future_ambient_full %>% mutate(playlist = "Future Ambient"),
-        future_garage_full %>% mutate(playlist = "Future Garage")) %>%
-    mutate(playlist = factor(playlist)) %>%
-    mutate(
-        segments =
-            map2(segments, key, compmus_c_transpose)) %>%
-    mutate(
-        pitches =
-            map(segments,
-                compmus_summarise, pitches,
-                method = 'mean', norm = 'manhattan'),
-        timbre =
-            map(
-                segments,
-                compmus_summarise, timbre,
-                method = 'mean')) %>%
-    mutate(pitches = map(pitches, compmus_normalise, 'clr')) %>%
-    mutate_at(vars(pitches, timbre), map, bind_rows) %>%
-    unnest(pitches, timbre)
 
 # Prepare the data for classification
 future_class <-
@@ -122,14 +100,27 @@ predict_forest <- function(split)
     predict(assessment(split), type = 'class') %>%
     bind_cols(assessment(split))
 
+
 # future_cv %>%
 #     mutate(pred = map(splits, predict_forest)) %>%
 #     unnest(pred) %>%
 #     metric_set(accuracy, kap, j_index)(truth = playlist, estimate = .pred_class)
 
+
+future_knn <- nearest_neighbor(neighbors = 1) %>% set_engine('kknn')
+predict_knn_1 <- function(split)
+    fit(future_knn, playlist ~ duration_ms + c01 + c02 + loudness + c03 + speechiness, data = analysis(split)) %>%
+    predict(assessment(split), type = 'class') %>%
+    bind_cols(assessment(split))
+
+predict_knn_2 <- function(split)
+    fit(future_knn, playlist ~ valence, data = analysis(split)) %>%
+    predict(assessment(split), type = 'class') %>%
+    bind_cols(assessment(split))
 ```
 
 ```{r forest_plot}
+# Plotting of the tree
 forest_plot <- future_class %>%
     fit(future_forest, playlist ~ ., data = .) %>%
     pluck('fit') %>%
@@ -200,6 +191,51 @@ kable(all_genres %>% group_by(Genre) %>% summarize('Song Count'=n()),
 
 # It might be insightful to also look at their non-future counterparts (if those exist), and see how each future genre differs from them to discover if any pattern may exist.
 
+future_cv %>%
+    mutate(pred = map(splits, predict_knn_1)) %>% unnest(pred) %>%
+    conf_mat(truth = playlist, estimate = .pred_class) %>%
+    autoplot(type = 'heatmap')
+
+future_cv %>%
+    mutate(pred = map(splits, predict_knn_2)) %>% unnest(pred) %>%
+    conf_mat(truth = playlist, estimate = .pred_class) %>%
+    autoplot(type = 'heatmap')
+```
+
+### Applying Clustering to the Genres
+
+```{r clustering1}
+future_unique <- future_full %>% mutate(track_name = str_trunc(track_name, 10))
+future_unique <- future_unique[!duplicated(future_unique$track_name),]
+
+future_juice <-
+    recipe(track_name ~
+               danceability +
+               energy +
+               loudness +
+               speechiness +
+               acousticness +
+               instrumentalness +
+               liveness +
+               valence +
+               tempo +
+               duration_ms +
+               C + `C#|Db` + D + `D#|Eb` +
+               E + `F` + `F#|Gb` + G +
+               `G#|Ab` + A + `A#|Bb` + B +
+               c01 + c02 + c03 + c04 + c05 + c06 +
+               c07 + c08 + c09 + c10 + c11 + c12,
+           data = future_unique) %>%
+    step_center(all_predictors()) %>%
+    step_scale(all_predictors()) %>%
+    # step_range(all_predictors()) %>%
+    prep(future_unique) %>%
+    juice %>%
+    column_to_rownames('track_name')
+
+future_dist <- dist(future_juice, method = 'euclidean')
+
+protoclust(future_dist) %>% dendro_data %>% ggdendrogram
 ```
 
 
@@ -219,6 +255,7 @@ ggplotly(scatter)
 ```
 
 ***
+
 
 #### Description
 An important finding of our preleminary research was the large devations of musical style between the genres. To me, valence seemed to be a logical choice for comparison, as I felt like the genres sounded most distict in this regard. The graph shows the average valence of the songs from each genre, as well as the value of each individual song in the form of a scatter plot. Additionally, the colour displays the energy value of the tracks, another feature I felt would provide contrast between the genres. Lastly, the size of each point gives an indication of the liveness of the track, as provided by Spotify.

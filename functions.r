@@ -276,3 +276,35 @@ if (!file.exists("data/fg_full.rds")) {
 } else {
     future_garage_full <- readRDS("data/fg_full.rds")
 }
+
+if (!file.exists("data/future_full.rds")) {
+    # Gather all the data
+    future_full <-
+        future_funk_full %>% mutate(playlist = "Future Funk") %>%
+        bind_rows(
+            kawaii_future_bass_full %>% mutate(playlist = "Kawaii Future Bass"),
+            futurepop_full %>% mutate(playlist = "Futurepop"),
+            future_ambient_full %>% mutate(playlist = "Future Ambient"),
+            future_garage_full %>% mutate(playlist = "Future Garage")) %>%
+        mutate(playlist = factor(playlist)) %>%
+        mutate(
+            segments =
+                map2(segments, key, compmus_c_transpose)) %>%
+        mutate(
+            pitches =
+                map(segments,
+                    compmus_summarise, pitches,
+                    method = 'mean', norm = 'manhattan'),
+            timbre =
+                map(
+                    segments,
+                    compmus_summarise, timbre,
+                    method = 'mean')) %>%
+        mutate(pitches = map(pitches, compmus_normalise, 'clr')) %>%
+        mutate_at(vars(pitches, timbre), map, bind_rows) %>%
+        unnest(pitches, timbre)
+
+    saveRDS(future_full, "data/future_full.rds")
+} else {
+    future_full <- readRDS("data/future_full.rds")
+}
