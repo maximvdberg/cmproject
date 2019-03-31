@@ -19,13 +19,15 @@ library(shiny)
 library(ggdendro)
 library(protoclust)
 library(heatmaply)
-
+library(network)
 # Get playlist data
 source("functions.r")
 all_genres <- rbind(future_funk,kawaii_future_bass,futurepop,future_ambient,future_garage)
 ```
 
 ### An Introduction to Spotify's Genres of the Future {data-commentary-width=400}
+
+<h1> Spotify's Genres of the Future - A Study on Spotify's Genre Classification</h1>
 
 Spotify has several curious genres within its database, including some which are characterized by the word *future*. Namely, the following selection:
 
@@ -36,6 +38,10 @@ Spotify has several curious genres within its database, including some which are
 - Future Garage
 
 It is definitely not clear if these genres are connected by something more than just their name. We'll explore why these genres are called the way the are, and if a (strong) connection might actually tie these genres together. This will consist of exploring the aspects of the music within each genre first, after which we will properly compare the 5 genres by defining a suitable corpus and providing insightful visualizations of the audio analysis data provided by the [Spotify API](https://www.rcharlie.com/spotifyr/), using some features provided by the [compmus R package](https://jaburgoyne.github.io/compmus/).
+
+To begin our journey through the future, we take a look at the ability of statistical classifiers to differentiate between the five genres, using a k-neighbours classifier with variables extracted from a random forest classifying tactic. We will find that the Spotify API itself might not be suitable to finding a satisfying answer to our question, although it will tell us exactly how the genres are in fact quite different from each other.
+
+Lets first take a step back however, and get acquainted with the genres and their surface level features.
 
 <center>
 <br><br>
@@ -50,7 +56,7 @@ It is definitely not clear if these genres are connected by something more than 
 
 <center>
 <br>
-Some sound samples from the different genres (in fact, these playlist together are the entire corpus).
+Some sound samples from the different genres (in fact, these playlist together make up the entire corpus).
 <br><br>
 <iframe src="https://open.spotify.com/embed/user/bkd0b33gypt1ixtyg44x4y2ui/playlist/4a0xb2zui3hIPll7CMgeSu" width="300" height="80" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
 <iframe src="https://open.spotify.com/embed/user/bkd0b33gypt1ixtyg44x4y2ui/playlist/75OfhBfc4tnQ8MFdiPiMcx" width="300" height="80" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
@@ -62,7 +68,7 @@ Some sound samples from the different genres (in fact, these playlist together a
 </center>
 
 
-### A Future of Sounds, Rhythms and Timbres - A Classification by Spotify's API features {data-commentary-width=800}
+### A Future of Sounds, Rhythms and Timbres - A Classification by Spotify's API features {data-commentary-width=600}
 
 ```{r random_forest}
 
@@ -119,6 +125,9 @@ predict_knn_2 <- function(split)
     bind_cols(assessment(split))
 ```
 
+
+<h2>Random Forest Classification</h2>
+
 ```{r forest_plot}
 # Plotting of the tree
 forest_plot <- future_class %>%
@@ -131,18 +140,33 @@ forest_plot$varnames <- rownames(forest_plot) # row names to column
 rownames(forest_plot) <- NULL
 # forest_plot$var_categ <- rep(1:2, 5) # random var category
 
-forest_ggplot <- ggplot(forest_plot, aes(x=reorder(varnames, MeanDecreaseGini), y=MeanDecreaseGini)) +
+ggplot(forest_plot, aes(x=reorder(varnames, MeanDecreaseGini), y=MeanDecreaseGini)) +
     geom_point(color = "#772953") +
     geom_segment(aes(x=varnames,xend=varnames,y=0,yend=MeanDecreaseGini), color = "#E95420") +
     ylab("Importance Value") +
     xlab("Variable Name") +
     title("Importance of classification features") +
     coord_flip()
-
-ggplotly(forest_ggplot)
 ```
 
+To start the classification process, we begin by applying random forest classification to our corpus. We immediately notice that most important variables in this model are not at all what we suspected in our preliminary analysis. The model the duration of the song and favors characteristics of the sound such as cepstro coefficient 1, which indicated loudness, cepstro coefficient 2, which indicates the brightness of the sound, and loudness again. Indeed, all these properties fluctuate from genre to genres, but they are not very insightful for our research question.
+
+Nevertheless, we will use the top five variables for a k-neighbour classification from which the confusion matrix can be found below.
+
+For our research this is of course useful information to know, but we are more interested in where these genres are similar. Aside from the none key-based properties, we can see that the forest classifier found acousticness and liveness to be _least_ important for classification. This leads us to a right path: the future is filled with low acousticness and liveness.
+
+<br>
+
+<h2>Naive K-neighbour Classification</h2>
+In the ad hoc analysis we suspected valence and energy might be an important factors to differentiate between the genres. This was the motivation for the following k-neighbour classification and its respective confusion matrix. Apparently however, the classification does not do superbly well.
+
+<h2>Random Forest Based K-neighbour Classification</h2>
+We thereafter look at a k-neighbour classification using the top variables found during the random forest classification, which does significantly better than the naive model. Here we find some interesting results concerning which genre combinations the model is better at finding the correct classification. To begin, it achieves high accuracy for futurepop, indicating its unique nature between the five genres.
+
+Secondly,
+
 ***
+
 
 #### A Short Ad Hoc Examination of the Genres
 __Future Funk and Kawaii Bass__
@@ -159,15 +183,15 @@ it would refer to a distinctively dystopian and dark impression of the future.
 __Future Garage and Future Ambient__
 
 Future Garage and Future Ambient could both in a certain way be described as minimalistic.
-They use little instruments, which often repeat short musical fragments thoughout the whole song in
+They use little instruments, which often repeat short musical fragments throughout the whole song in
 a relatively low tempo. Strong drum grooves give structure to the songs, in which generally no distinctive
 melody or vocal part is present, especially in Future Ambient. There, slow reverberized synth sounds and
-sweeps give color to tracks. In this regard, Future Garage is certianly different. It features these synths
+sweeps give color to tracks. In this regard, Future Garage is certainly different. It features these synths
 too, but also contains a lot more acoustic "real" instruments, albeit often sampled, and the occasional
-"smooth" melody line. For both genres, the *Future* seems simply to be an indication of the electronical
+"smooth" melody line. For both genres, the *Future* seems simply to be an indication of the electronic
 style and heavy usage of sampling.
 
-#### The Corpus
+#### The Creation of the Corpus
 
 The collections of songs we'll analyze, our corpus, will naturally be a selection of songs from artist
 from each of these genres. Large names such as Snail's House (who has in fact been credited to be the pioneer
@@ -180,33 +204,42 @@ artist would actually belong to the genre, instead of their appearance being bas
 automatic assignment. If not, it will be more useful to exclude them from the research, as they would
 negatively interfere with making valid comparisons between the genres.
 
-For now, I used playlist largely based on playlists provided by the Every Noise at Once website
-(http://everynoise.com/), each around 50 tracks long.
+I ended up putting together a playlist for every genre based on playlists provided by the Every Noise at Once website (http://everynoise.com/), each around 50 tracks long. The Every Noise at Once website is a large compilation of all genres on Spotify, and should give a representative selection of songs for each genres, at least according to Spotify's own genre classification algorithms.
 
 
 ```{r corpus_table, echo = FALSE}
 # TODO: table with corpus (might redefine the corpus if I have time)
 kable(all_genres %>% group_by(Genre) %>% summarize('Song Count'=n()),
-      caption = "The song count for the five genres (will probably be updated later)")
+      caption = "The song count for the five genres")
 
-# It might be insightful to also look at their non-future counterparts (if those exist), and see how each future genre differs from them to discover if any pattern may exist.
+```
 
-future_cv %>%
-    mutate(pred = map(splits, predict_knn_1)) %>% unnest(pred) %>%
-    conf_mat(truth = playlist, estimate = .pred_class) %>%
-    autoplot(type = 'heatmap')
 
+#### Naive K-neighbour Classification
+
+```{r naive-confusion}
 future_cv %>%
     mutate(pred = map(splits, predict_knn_2)) %>% unnest(pred) %>%
     conf_mat(truth = playlist, estimate = .pred_class) %>%
     autoplot(type = 'heatmap')
 ```
 
+#### Random Forest Based K-neighbour Classification
+
+```{r better-confusion}
+future_cv %>%
+    mutate(pred = map(splits, predict_knn_1)) %>% unnest(pred) %>%
+    conf_mat(truth = playlist, estimate = .pred_class) %>%
+    autoplot(type = 'heatmap', color="orange")
+```
+
+
 ### Applying Clustering to the Genres
 
-```{r clustering1}
-future_unique <- future_full %>% mutate(track_name = str_trunc(track_name, 10))
+```{r clustering1, out.width = '80%'}
+future_unique <- future_full %>% mutate(track_name = str_trunc(track_name, 20))
 future_unique <- future_unique[!duplicated(future_unique$track_name),]
+future_unique <- sample_n(future_unique, 100)
 
 future_juice <-
     recipe(track_name ~
@@ -235,9 +268,13 @@ future_juice <-
 
 future_dist <- dist(future_juice, method = 'euclidean')
 
-protoclust(future_dist) %>% dendro_data %>% ggdendrogram
+# protoclust(future_dist) %>% dendro_data() %>% ggdendrogram()
 ```
+<img src="assets/cluster.png" height="100%">
 
+***
+
+Clustering shows
 
 ### First Investigations
 
@@ -264,7 +301,7 @@ An important finding of our preleminary research was the large devations of musi
 Surprisingly, we can see Futurepop actually has a somewhat high average, even higher than Kawaii Future Bass, something I think one would not concluded based on listening to the selections. As expected, Future Funk and Kawaii Future Bass do in general seem to be assigned higher valence values than Future Ambient and Future Garage.
 
 
-### Chroma, Cesptro and Chord Features
+### Chroma, Cesptro and Chord Features {data-commentary-width=600}
 
 ```{r chroma_cepstro_chord}
 
@@ -281,11 +318,11 @@ kfb_chroma <- plot_chroma(kfb_milk)    + ggtitle("Hot Milk - Chromagram")
 fg_chroma <- plot_chroma(fg_king)      + ggtitle("King Bromeliad - Chromagram")
 fa_chroma <- plot_chroma(fa_freefloat) + ggtitle("Freefloat - Chromagram")
 
-fp_cesptro <- plot_cesptro(fp_forever)   + ggtitle("Forever (Original Club Mix) - Cesptrogram")
-ff_cesptro <- plot_cesptro(ff_sunset)    + ggtitle("Ji-Eun's Sunset - Cesptrogram")
-kfb_cesptro <- plot_cesptro(kfb_milk)    + ggtitle("Hot Milk - Cesptrogram")
-fg_cesptro <- plot_cesptro(fg_king)      + ggtitle("King Bromeliad - Cesptrogram")
-fa_cesptro <- plot_cesptro(fa_freefloat) + ggtitle("Freefloat - Cesptrogram")
+fp_cesptro <- plot_cesptro(fp_forever)   + ggtitle("Forever (Original Club Mix) - Cepstrogram")
+ff_cesptro <- plot_cesptro(ff_sunset)    + ggtitle("Ji-Eun's Sunset - Cepstrogram")
+kfb_cesptro <- plot_cesptro(kfb_milk)    + ggtitle("Hot Milk - Cepstrogram")
+fg_cesptro <- plot_cesptro(fg_king)      + ggtitle("King Bromeliad - Cepstrogram")
+fa_cesptro <- plot_cesptro(fa_freefloat) + ggtitle("Freefloat - Cepstrogram")
 
 fp_chord <- plot_chord(fp_forever)   + ggtitle("Forever (Original Club Mix) - Chordogram")
 ff_chord <- plot_chord(ff_sunset)    + ggtitle("Ji-Eun's Sunset - Chordogram")
@@ -442,3 +479,11 @@ Each song is compared using the same norm to allow for fair comparisons.
 The first thing one may notice is the differences in repetitions between the genres. The Future Garage song
 especially has a very homogeneous structure judging from the three c-grams. Future Ambient is similar, but seems
 to have two different sections which both show a lot of individual repetition.
+
+
+
+
+
+### What makes the 'future', the _future_? - Conclusion
+
+We have found

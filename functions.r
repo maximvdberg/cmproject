@@ -1,3 +1,14 @@
+#----- NETWORK VISUALISATION -----#
+# weighted adjacency matrix
+graph = data.frame(Ambient = c(30,  3, 12,  3,  2),
+                   Funk =    c( 2, 14, 11,  5, 17),
+                   Garage =  c(15,  8, 22,  3,  2),
+                   Pop =     c( 2,  9,  2, 34,  3),
+                   Kawaii =  c( 1, 21,  0,  5, 22))
+
+
+
+
 #----- SOME FUNCTIONS -----#
 
 # Remove unnecessary data received from the Spotify API, and
