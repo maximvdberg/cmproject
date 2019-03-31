@@ -68,7 +68,7 @@ Some sound samples from the different genres (in fact, these playlist together m
 </center>
 
 
-### A Future of Sounds, Rhythms and Timbres - A Classification by Spotify's API features {data-commentary-width=600}
+### A Future of Sounds, Rhythms and Timbres - A Classification by Spotify's API features {data-commentary-width=800}
 
 ```{r random_forest}
 
@@ -140,13 +140,16 @@ forest_plot$varnames <- rownames(forest_plot) # row names to column
 rownames(forest_plot) <- NULL
 # forest_plot$var_categ <- rep(1:2, 5) # random var category
 
-ggplot(forest_plot, aes(x=reorder(varnames, MeanDecreaseGini), y=MeanDecreaseGini)) +
+plot <- ggplot(forest_plot, aes(x=reorder(varnames, MeanDecreaseGini), y=MeanDecreaseGini)) +
     geom_point(color = "#772953") +
     geom_segment(aes(x=varnames,xend=varnames,y=0,yend=MeanDecreaseGini), color = "#E95420") +
     ylab("Importance Value") +
     xlab("Variable Name") +
     title("Importance of classification features") +
     coord_flip()
+
+plot
+
 ```
 
 To start the classification process, we begin by applying random forest classification to our corpus. We immediately notice that most important variables in this model are not at all what we suspected in our preliminary analysis. The model the duration of the song and favors characteristics of the sound such as cepstro coefficient 1, which indicated loudness, cepstro coefficient 2, which indicates the brightness of the sound, and loudness again. Indeed, all these properties fluctuate from genre to genres, but they are not very insightful for our research question.
@@ -163,7 +166,9 @@ In the ad hoc analysis we suspected valence and energy might be an important fac
 <h2>Random Forest Based K-neighbour Classification</h2>
 We thereafter look at a k-neighbour classification using the top variables found during the random forest classification, which does significantly better than the naive model. Here we find some interesting results concerning which genre combinations the model is better at finding the correct classification. To begin, it achieves high accuracy for futurepop, indicating its unique nature between the five genres.
 
-Secondly,
+Secondly, the classifier seems to struggle a lot when differentiating between future funk and kawaii future bass. Due to the reasons above, this does not come as a huge surprise. Between the other three genres though, the classifier does a great job, further indicating their differences from the group.
+
+Additionally, future garage and future ambient are difficult to seperate as well, and is seems like future garage is confused a lot with future funk as well! Thus clearly, these genres have a lot in common as well. There is no confusion when differentiating these with kawaii future bass or futurepop however, further indicating their respective differences.
 
 ***
 
@@ -234,7 +239,7 @@ future_cv %>%
 ```
 
 
-### Applying Clustering to the Genres
+### Applying Clustering to the Genres {data-commentary-width=300}
 
 ```{r clustering1, out.width = '80%'}
 future_unique <- future_full %>% mutate(track_name = str_trunc(track_name, 20))
@@ -274,9 +279,13 @@ future_dist <- dist(future_juice, method = 'euclidean')
 
 ***
 
-Clustering shows
+#### Description and Results
 
-### First Investigations
+Clustering using a randomly selected subset of the corpus shows that the five genres in fact cluster into just three large clusters, although it is difficult to categorize these songs manually based on listening and inspection. When one listens the songs from each respective cluster in the dendogram on the left however, one can hear the similarities somewhat. Once again, the track duration seems to come back prominentely, further indicating its importance.
+
+From this graph, it is clear that a lot of overlap exists between the genres. However, we can not begin to make claims about the uniformity among the future genres. In fact, we emphasize some of the larger differences when looking at a valence plot in the next section, and chromagrams, cepstrograms and chordograms in section thereafter.
+
+### A Deeper Investigation into he Valence and Energy of the Genres
 
 ```{r plot_scatter1, echo = FALSE}
 # Make some plots
@@ -295,13 +304,13 @@ ggplotly(scatter)
 
 
 #### Description
-An important finding of our preleminary research was the large devations of musical style between the genres. To me, valence seemed to be a logical choice for comparison, as I felt like the genres sounded most distict in this regard. The graph shows the average valence of the songs from each genre, as well as the value of each individual song in the form of a scatter plot. Additionally, the colour displays the energy value of the tracks, another feature I felt would provide contrast between the genres. Lastly, the size of each point gives an indication of the liveness of the track, as provided by Spotify.
+An important finding of our preliminary research was the large deviations of musical style between the genres. To me, valence seemed to be a logical choice for comparison, as I felt like the genres sounded most distict in this regard (even though the classification process suggested otherwise). The graph shows the average valence of the songs from each genre, as well as the value of each individual song in the form of a scatter plot. Additionally, the colour displays the energy value of the tracks, another feature I felt provides contrast between the genres. Lastly, the size of each point gives an indication of the liveness of the track, as provided by Spotify.
 
 #### Results
 Surprisingly, we can see Futurepop actually has a somewhat high average, even higher than Kawaii Future Bass, something I think one would not concluded based on listening to the selections. As expected, Future Funk and Kawaii Future Bass do in general seem to be assigned higher valence values than Future Ambient and Future Garage.
 
 
-### Chroma, Cesptro and Chord Features {data-commentary-width=600}
+### Chroma, Cepstro and Chord Features {data-commentary-width=700}
 
 ```{r chroma_cepstro_chord}
 
@@ -475,15 +484,45 @@ Each song is compared using the same norm to allow for fair comparisons.
     <button class="tab-button" onclick="openChroma('fp')">Futurepop</button>
 </nav>
 </center>
+<br>
+
+#### Results
 
 The first thing one may notice is the differences in repetitions between the genres. The Future Garage song
 especially has a very homogeneous structure judging from the three c-grams. Future Ambient is similar, but seems
 to have two different sections which both show a lot of individual repetition.
 
+In the chordograms, we see that future funk and future kawaii bass both seem to be more varied with their chord changes in comparison to the other genres. We can also observe that, along with futurepop, these songs contain a reoccuring structure in the c-grams which the other two genres do not. This could, for example be due to the presence or non-presence of the common chorus-verse structure.
+
+Furthermore, the cepstro features show more differences. The Future Ambient song shows a dynamic progression, where the different coefficients change in prevalance throughout the song. Kawaii Future Bass and Futurepop show the 'chorus-structure' we have discussed, while the remaining two genres seem to stay somewhat consistent throughout, only changing in a small section within the piece. For all songs, the first coefficient, loudness, stays very consistent throughout the song, but each are at different levels. Loudness could be an effect of the recording/mastering process for each genre, which this data does suggest could be different.
 
 
+### What makes the 'future', the _future?_ - Conclusion
 
+<center>
 
-### What makes the 'future', the _future_? - Conclusion
+<br><br>
+<div width="400px">
+<h2>What makes the 'future', the _future?_ </h2>
 
-We have found
+We have found a selection of music which is similar within in many ways, but always only within subsets of the whole collection. <br>
+Appart from the lack of acousticness and liveness these genres share - a common feature of almost all modern studio recorded music -, <br>
+there seem to be no characteristics which these genres of the future _all_ share.<br><br>
+Future Funk and Future Kawaii Bass have a lot of overlap, but just with the two of them. So do Future Ambient and Future Garage, <br>
+prefering long minimalistic and repeating pieces. Alas, the other three genres do not. Could it be the electronic nature which Kawaii Bass, <br>
+Future Pop and Future Ambient have in common? Sadly, Future Funk and Future Garage do not play along. And sadly, so this trend seems to continue.<br>
+Additionally, the effectiveness of the classification which we showed in the confusion matrix is further indication of this fact.
+
+<hr>
+
+The Future is more like an _idea_ than it is a characteristic. It is an idea that means different things to different artists. <br>
+As a label, its applicibility to the give genres can be argued over, but overall, it is something one can interpret as they want, <br>to indicate whatever they want.
+
+As for Spotify, they seem to be happy to define it as just that.
+</div>
+
+<br><br>
+<img src="assets/future.jpeg" width="30%">
+
+</center>
+
